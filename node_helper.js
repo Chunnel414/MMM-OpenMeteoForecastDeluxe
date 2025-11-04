@@ -1,16 +1,16 @@
 /*********************************
 
-  Node Helper for MMM-AccuWeatherForecastDeluxe.
+  Node Helper for MMM-OpenMeteoForecastDeluxe.
 
-  This helper is responsible for the DarkSky-compatible data pull from AccuWeather.
+  This helper is responsible for the DarkSky-compatible data pull from OpenMeteo.
   At a minimum the API key, Latitude and Longitude parameters
   must be provided.  If any of these are missing, the request
-  to AccuWeather will not be executed, and instead an error
+  to OpenMeteo will not be executed, and instead an error
   will be output the the MagicMirror log.
 
   Since AccuWeather has a very limited API quota on their free plan, there is an option to specify a second apiKey to double the quota.
 
-  The AccuWeather-compatible API request looks like this:
+  The OpenMeteo-compatible API request looks like this:
 
     http://dataservice.accuweather.com/forecasts/v1/daily/5day/{locationKey}?apikey={apiKey}&details=true&metric={units=metric}
 
@@ -27,14 +27,14 @@ module.exports = NodeHelper.create({
     },
 
     socketNotificationReceived: function(notification, payload) {
-        if (notification === "ACCUWEATHER_ONE_CALL_FORECAST_GET") {
-            console.log("[MMM-AccuWeatherForecastDeluxe] " + notification );
+        if (notification === "OpenMeteo_ONE_CALL_FORECAST_GET") {
+            console.log("[MMM-OpenMeteoForecastDeluxe] " + notification );
             var self = this;
 
             if (payload.apikey == null || payload.apikey == "") {
-                console.log("[MMM-AccuWeatherForecastDeluxe] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** No API key configured. Get an API key at http://accuweather.com");
+                console.log("[MMM-OpenMeteoForecastDeluxe] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** No API key configured. Get an API key at http://open-meteo.com");
             } else if (payload.locationKey == null || payload.locationKey == "" ) {
-                console.log("[MMM-AccuWeatherForecastDeluxe] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** LocationKey not provided.");
+                console.log("[MMM-OpenMeteoForecastDeluxe] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** LocationKey not provided.");
             } else {
 
                 var forecastUrl = payload.endpoint +
@@ -61,36 +61,36 @@ module.exports = NodeHelper.create({
                 (async () => {
                     var f = {};
                     var fh = {};
-                    console.log("[MMM-AccuWeatherForecastDeluxe] Getting data: " + forecastUrl);
+                    console.log("[MMM-OpenMeteoForecastDeluxe] Getting data: " + forecastUrl);
                     const resp1 = await fetch(forecastUrl);
                     const json1 = await resp1.json();
-                    //console.log("[MMM-AccuWeatherForecastDeluxe] url data: " + JSON.stringify(json1) );
+                    //console.log("[MMM-OpenMeteoForecastDeluxe] url data: " + JSON.stringify(json1) );
                     f = json1;
                     f.instanceId = payload.instanceId;
                     console.log("BB After Daily");
                     
-                    console.log("[MMM-AccuWeatherForecastDeluxe] Getting data: " + currentUrl);
+                    console.log("[MMM-OpenMeteoForecastDeluxe] Getting data: " + currentUrl);
                     const resp2 = await fetch(currentUrl);
                     const json2 = await resp2.json();
-                    //console.log("[MMM-AccuWeatherForecastDeluxe] url2 data: " + JSON.stringify(json2) );
+                    //console.log("[MMM-OpenMeteoForecastDeluxe] url2 data: " + JSON.stringify(json2) );
                     f.Current = json2[0];    
                     console.log("BB After Current");  
                     
-                    console.log("[MMM-AccuWeatherForecastDeluxe] Getting data: " + hourlyUrl);
+                    console.log("[MMM-OpenMeteoForecastDeluxe] Getting data: " + hourlyUrl);
                     const resp3 = await fetch(hourlyUrl);
                     const json3 = await resp3.json();
-                    //console.log("[MMM-AccuWeatherForecastDeluxe] url3data: " + JSON.stringify(json2) );
+                    //console.log("[MMM-OpenMeteoForecastDeluxe] url3data: " + JSON.stringify(json2) );
                     f.Hourly = json3; 
                     console.log ("BB After Hourly");
                     
-                    self.sendSocketNotification("ACCUWEATHER_ONE_CALL_FORECAST_DATA", f);
-                    console.log("[MMM-AccuWeatherForecastDeluxe] " + " after sendSocketNotification");
+                    self.sendSocketNotification("OpenMeteo_ONE_CALL_FORECAST_DATA", f);
+                    console.log("[MMM-OpenMeteoForecastDeluxe] " + " after sendSocketNotification");
                   })().catch(function (error) {
                     // if there's an error, log it
-                    console.error("[MMM-AccuWeatherForecastDeluxe] " + " ** ERROR ** " + error);
+                    console.error("[MMM-OpenMeteoForecastDeluxe] " + " ** ERROR ** " + error);
                 });
              
-                console.log("[MMM-AccuWeatherForecastDeluxe] after API calls");
+                console.log("[MMM-OpenMeteoForecastDeluxe] after API calls");
             }
         }
     },
