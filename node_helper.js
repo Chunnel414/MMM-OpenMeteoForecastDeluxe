@@ -31,11 +31,15 @@ module.exports = NodeHelper.create({
                 return; // Stop execution if location is missing
             }
 
-            // We only need the DAILY forecast data for the bars layout.
+            // We request daily, hourly, and current_weather data in one call.
             // Open-Meteo is key-less, so the endpoint is simple.
             var apiUrl = "https://api.open-meteo.com/v1/forecast?" +
                 "latitude=" + payload.latitude +
                 "&longitude=" + payload.longitude +
+                // REQUEST HOURLY AND CURRENT WEATHER DATA
+                "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,windspeed_10m,winddirection_10m,windgusts_10m,weathercode" +
+                "&current_weather=true" + 
+                // REQUEST DAILY DATA FOR FORECAST
                 "&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max,winddirection_10m_dominant,precipitation_probability_max,precipitation_sum,time" +
                 "&timeformat=unixtime" +
                 "&timezone=auto" +
