@@ -44,15 +44,11 @@ module.exports = NodeHelper.create({
 
             (async () => {
                 try {
-                    // Use a standard fetch request with a timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-                    // The 'signal' property must be correctly accessed within the fetch call.
-                    const resp = await fetch(apiUrl, { signal: controller.signal });
-                    clearTimeout(timeoutId);
+                    // Bare minimum fetch call
+                    const resp = await fetch(apiUrl); 
 
                     if (!resp.ok) {
+                        // This will now capture a 400 or 403 status if the security check passes
                         throw new Error(`HTTP Error! Status: ${resp.status}`);
                     }
 
@@ -64,6 +60,7 @@ module.exports = NodeHelper.create({
                     console.log("[MMM-OpenMeteoForecastDeluxe] Successfully retrieved and sent Open-Meteo data.");
 
                 } catch (error) {
+                    // This is still our debugging line
                     console.error("[MMM-OpenMeteoForecastDeluxe] ** ERROR ** Failed to fetch weather data: " + error.name + " - " + error.message);
                     self.sendSocketNotification("OPENMETEO_FETCH_ERROR", { instanceId: payload.instanceId, error: error.message });
                 }
