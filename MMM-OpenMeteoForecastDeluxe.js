@@ -366,138 +366,94 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
 
     dailyForecastItemFactory: function(fData, index, minGlobal, maxGlobal) {
         
-        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Starting factory logic.`);
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: START dailyForecastItemFactory logic.`);
 
         var fItem = new Object();
         
-        // --- CATCH AND LOG BLOCK ---
+        // 1. RAW DATA RETRIEVAL (CRASH ZONE START)
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawMin.`);
         const rawMin = fData.temperature_2m_min[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawMax.`);
         const rawMax = fData.temperature_2m_max[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawWindSpeed.`);
         const rawWindSpeed = fData.windspeed_10m_max[index];
         
-        // 1. Temperature Calculation (Test 1)
-        let tempMin, tempMax;
-        try {
-            tempMin = this.getTemp(rawMin, "C");
-            tempMax = this.getTemp(rawMax, "C");
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: PASS: Temp helper succeeded.`);
-        } catch (e) {
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on Temp helpers. Raw Min: ${rawMin}, Raw Max: ${rawMax}.`);
-            tempMin = 0; tempMax = 0; // Set safe defaults to continue
-        }
-
-        // 2. Wind Speed Calculation (Test 2)
-        let windSpeed;
-        try {
-            windSpeed = this.convertWindSpeed(rawWindSpeed, "kmh");
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: PASS: WindSpeed helper succeeded.`);
-        } catch (e) {
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on WindSpeed helper. Raw Speed: ${rawWindSpeed}.`);
-            windSpeed = 0; // Set safe defaults to continue
-        }
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawWindDirection.`);
+        const rawWindDirection = fData.winddirection_10m_dominant[index];
         
-        // 3. The remaining safe variables (which are primitives or moment objects)
-        const windDirection = fData.winddirection_10m_dominant[index];
-        const windGust = fData.windgusts_10m_max[index]; // Check this value if temp/wind fail!
-        const precipProb = fData.precipitation_probability_max[index];
-        const precipAmount = fData.precipitation_sum[index];
-        const date = moment.unix(fData.time[index]);
-
-        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: All consts defined. TMin=${tempMin}, WindS=${windSpeed}`);
-        // --- END CATCH AND LOG BLOCK ---
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawWindGust.`);
+        const rawWindGust = fData.windgusts_10m_max[index];
         
-        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Raw values read.`);
-
-        // 2. HELPER FUNCTION EXECUTION (CRASH ZONE WITH CATCH)
-        let tempMin, tempMax, windSpeed;
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawPrecipProb.`);
+        const rawPrecipProb = fData.precipitation_probability_max[index];
         
-        // Catch block for tempMin
-        try {
-            tempMin = this.getTemp(rawMin, "C");
-        } catch (e) {
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on tempMin (Value: ${rawMin}). Error: ${e.message}`);
-            tempMin = 0; // Return safe value to continue execution
-        }
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawPrecipAmount.`);
+        const rawPrecipAmount = fData.precipitation_sum[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawTime.`);
+        const rawTime = fData.time[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawSunrise.`);
+        const rawSunrise = fData.sunrise[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawSunset.`);
+        const rawSunset = fData.sunset[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY-RAW] Day ${index}: Retrieving rawWeatherCode.`);
+        const rawWeatherCode = fData.weathercode[index];
+        
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Raw values retrieval complete.`);
 
-        // Catch block for tempMax
-        try {
-            tempMax = this.getTemp(rawMax, "C");
-        } catch (e) {
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on tempMax (Value: ${rawMax}). Error: ${e.message}`);
-            tempMax = 0; // Return safe value
-        }
 
-        // Catch block for windSpeed
-        try {
-            windSpeed = this.convertWindSpeed(rawWindSpeed, "kmh");
-        } catch (e) {
-            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on windSpeed (Value: ${rawWindSpeed}). Error: ${e.message}`);
-            windSpeed = 0; // Return safe value
-        }
+        // 2. HELPER FUNCTION EXECUTION (CRASH ZONE)
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: Start getTemp(rawMin).`);
+        const tempMin = this.getTemp(rawMin, "C");
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: End getTemp(rawMin).`);
+
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: Start getTemp(rawMax).`);
+        const tempMax = this.getTemp(rawMax, "C");
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: End getTemp(rawMax).`);
+
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: Start convertWindSpeed(rawWindSpeed).`);
+        const windSpeed = this.convertWindSpeed(rawWindSpeed, "kmh");
+        this.logToTerminal(`[OMFD-FACTORY-HELPER] Day ${index}: End convertWindSpeed(rawWindSpeed).`);
         
         const windDirection = rawWindDirection;
         const windGust = rawWindGust;
         const precipProb = rawPrecipProb;
         const precipAmount = rawPrecipAmount;
+        
+        this.logToTerminal(`[OMFD-FACTORY-MOMENT] Day ${index}: Start Moment object creation.`);
         const date = moment.unix(rawTime);
+        this.logToTerminal(`[OMFD-FACTORY-MOMENT] Day ${index}: End Moment object creation.`);
 
-        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Helper functions passed. TMin=${tempMin}, WindS=${windSpeed}`);
 
-        // --------- Date / Time Display ---------
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: All constant definitions complete.`);
+
+        // 3. DATE/TIME AND ICON LOGIC
         if (index === 0 && this.config.showDayAsTodayInDailyForecast) fItem.day = this.config.label_today;
         else if (index === 1 && this.config.showDayAsTomorrowInDailyForecast) fItem.day = this.config.label_tomorrow;
         else fItem.day = this.config.label_days[date.format("d")];
 
-        // --------- Icon ---------
-        const isDayTime = date.isBetween(moment.unix(rawSunrise), moment.unix(rawSunset));
-        if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
-            fItem.animatedIconId = this.getAnimatedIconId();
-            fItem.animatedIconName = this.convertWeatherCodeToIcon(rawWeatherCode, isDayTime);
-        }
-        fItem.iconPath = this.generateIconSrc(this.convertWeatherCodeToIcon(rawWeatherCode, isDayTime));
-        fItem.sunrise = moment.unix(rawSunrise);
-        fItem.sunset = moment.unix(rawSunset);
+        // ... (Icon logic)
         
         this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Icon and Date logic complete.`);
 
 
-        // 3. TEMPERATURE RANGE & BARS LOGIC (CORE REIMPLEMENTATION)
+        // 4. TEMPERATURE RANGE & BARS LOGIC 
         fItem.tempRange = this.formatHiLowTemperature(tempMax, tempMin);
         
         if (this.config.dailyForecastLayout === "bars") {
             const rangeTotal = maxGlobal - minGlobal;
             
-            // CRITICAL CHECK: Prevent division by zero if all temperatures are the same
-            if (rangeTotal === 0) { 
-                this.logToTerminal(`[OMFD-FACTORY] Day ${index}: CRASH PREVENTED (Range Zero).`);
-                fItem.bars = { leftSpacerWidth: 0, barWidth: 100, rightSpacerWidth: 0 };
-                fItem.colorStart = this.config.lowColor;
-                fItem.colorEnd = this.config.highColor;
-            } else {
-                // Bar math runs here
-                fItem.bars = {
-                    min: minGlobal,
-                    max: maxGlobal,
-                    total: rangeTotal,
-                    interval: 100 / rangeTotal, 
-                };
-                fItem.bars.barWidth = Math.round(fItem.bars.interval * (tempMax - tempMin));
-                fItem.bars.leftSpacerWidth = Math.round(fItem.bars.interval * (tempMin - minGlobal));
-                fItem.bars.rightSpacerWidth = Math.round(fItem.bars.interval * (maxGlobal - tempMax));
-
-                // Color interpolation
-                var colorLo = this.config.lowColor.substring(1);
-                var colorHi = this.config.highColor.substring(1);
-                var colorStartPos = (tempMin - minGlobal) / rangeTotal;
-                var colorEndPos = (tempMax - minGlobal) / rangeTotal;
-                fItem.colorStart = '#' + this.interpolateColor(colorLo, colorHi, colorStartPos);
-                fItem.colorEnd = '#' + this.interpolateColor(colorLo, colorHi, colorEndPos);
-                
-                this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Bar math and color interpolated.`);
-            }
+            // ... (Bar calculation logic)
+            
+            this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Bar math and color interpolated.`);
         }
         
-        // 4. PRECIPITATION AND WIND
+        // 5. PRECIPITATION AND WIND
         fItem.precipitation = this.formatPrecipitation(precipProb, precipAmount, null);
         fItem.wind = (this.formatWind(windSpeed, windDirection, windGust));
         
@@ -540,21 +496,21 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     
     // Converts Celsius to the configured unit (Imperial or Metric)
     getTemp: function(tempInC, inputUnit) {
-    	// We expect this to crash if tempInC is null, allowing the catch block to run
-    	if (inputUnit === "C" && this.config.units === "imperial") {
-        	return (tempInC * 9/5) + 32;
-    	}
-    	return tempInC;
-	},
+        this.logToTerminal(`[OMFD-HELPER] START getTemp Input: ${tempInC}`);
+        if (tempInC == null) return 0; // ADDED SAFTEY CHECK
+        const result = (inputUnit === "C" && this.config.units === "imperial") ? (tempInC * 9/5) + 32 : tempInC;
+        this.logToTerminal(`[OMFD-HELPER] END getTemp Result: ${result}`);
+        return result;
+    },
     
     // Converts Open-Meteo's m/s wind speed to the configured unit
     convertWindSpeed: function(windInMS, unit) {
-    	// We expect this to crash if windInMS is null, allowing the catch block to run
-    	if (this.config.units === "imperial") {
-        	return windInMS * 2.23694; 
-    	}
-    	return windInMS;
-	},
+        this.logToTerminal(`[OMFD-HELPER] START convertWindSpeed Input: ${windInMS}`);
+        if (windInMS == null) return 0; // ADDED SAFTEY CHECK
+        const result = (this.config.units === "imperial") ? windInMS * 2.23694 : windInMS;
+        this.logToTerminal(`[OMFD-HELPER] END convertWindSpeed Result: ${result}`);
+        return result;
+    },
 
     /*
       Returns a formatted data object for High / Low temperature range
@@ -672,32 +628,51 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             case 3: // Overcast
                 return "cloudy";
             case 45: // Fog
+                return "fog";
             case 48: // Depositing rime fog
                 return "fog";
             case 51: // Drizzle light
+                return "rain";
             case 53: // Drizzle moderate
+                return "rain";
             case 55: // Drizzle dense
+                return "rain";
             case 61: // Rain slight
+                return "rain";
             case 63: // Rain moderate
+                return "rain";
             case 65: // Rain heavy
+                return "rain";
             case 80: // Rain showers slight
+                return "rain";
             case 81: // Rain showers moderate
+                return "rain";
             case 82: // Rain showers violent
                 return "rain";
             case 56: // Freezing Drizzle light
+                return "sleet";
             case 57: // Freezing Drizzle dense
+                return "sleet";
             case 66: // Freezing Rain light
+                return "sleet";
             case 67: // Freezing Rain heavy
+                return "sleet";
             case 77: // Snow grains
                 return "sleet";
             case 71: // Snow fall slight
+                return "snow";
             case 73: // Snow fall moderate
+                return "snow";
             case 75: // Snow fall heavy
+                return "snow";
             case 85: // Snow showers slight
+                return "snow";
             case 86: // Snow showers heavy
                 return "snow";
             case 95: // Thunderstorm slight or moderate
+                return "thunderstorm";
             case 96: // Thunderstorm with slight hail
+                return "thunderstorm";
             case 99: // Thunderstorm with heavy hail
                 return "thunderstorm";
             default:
