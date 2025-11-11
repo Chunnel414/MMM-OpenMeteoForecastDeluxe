@@ -13,21 +13,24 @@ module.exports = NodeHelper.create({
 
     start: function() {
         console.log("Starting node_helper for module [MMM-OpenMeteoForecastDeluxe]");
+        // Store instanceId for CLIENT_LOG, though usually handled by payload
+        this.instanceId = null; 
     },
 
     socketNotificationReceived: function(notification, payload) {
         
-        // --- 1. CLIENT LOG HANDLER (Must be separate from main fetch logic) ---
+        // --- 1. CLIENT LOG HANDLER (MUST BE FIRST) ---
         if (notification === "CLIENT_LOG") {
-            // Check instanceId is only necessary if we had multiple instances
+            // This is the correct placement to catch client-side logs in the terminal
             console.log(`[CLIENT LOG] ${payload.message}`);
-            return; // Stop processing after logging client message
+            return; 
         }
 
         // --- 2. MAIN FETCH HANDLER ---
         if (notification === "OPENMETEO_FORECAST_GET") {
             console.log("[MMM-OpenMeteoForecastDeluxe] " + notification );
             var self = this;
+            this.instanceId = payload.instanceId; // Capture ID if needed later
 
             if (payload.latitude == null || payload.longitude == null) {
                 console.log("[MMM-OpenMeteoForecastDeluxe] ** ERROR ** Latitude or Longitude not provided.");
