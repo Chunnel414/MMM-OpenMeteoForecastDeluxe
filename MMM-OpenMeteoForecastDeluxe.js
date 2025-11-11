@@ -268,8 +268,23 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
 		}
 	
 		for (let i = 0; i < rawDaily.time.length; i++) {
-            minTempGlobal = Math.min(minTempGlobal, this.getTemp(rawDaily.temperature_2m_min[i], "C"));
-            maxTempGlobal = Math.max(maxTempGlobal, this.getTemp(rawDaily.temperature_2m_max[i], "C"));
+            // Read temperature values, ensuring they are numbers (defaulting to a safe range if needed)
+            const minTemp = this.getTemp(rawDaily.temperature_2m_min[i], "C");
+            const maxTemp = this.getTemp(rawDaily.temperature_2m_max[i], "C");
+            
+            this.logToTerminal(`[OMFD-LOOP] Index ${i}: Min/Max API values processed: ${minTemp} / ${maxTemp}`); // <-- NEW LOG
+
+            // Safety Check: Only update global min/max if the fetched temperature is a valid number
+            if (typeof minTemp === 'number' && !isNaN(minTemp)) {
+                minTempGlobal = Math.min(minTempGlobal, minTemp);
+            } else {
+                 this.logToTerminal(`[OMFD-LOOP] Index ${i}: Skipping invalid minTemp value.`); // <-- NEW LOG
+            }
+            if (typeof maxTemp === 'number' && !isNaN(maxTemp)) {
+                maxTempGlobal = Math.max(maxTempGlobal, maxTemp);
+            } else {
+                 this.logToTerminal(`[OMFD-LOOP] Index ${i}: Skipping invalid maxTemp value.`); // <-- NEW LOG
+            }
         }
         
         this.logToTerminal(`[OMFD] Global Temp Range: ${minTempGlobal}degC to ${maxTempGlobal}degC`);
