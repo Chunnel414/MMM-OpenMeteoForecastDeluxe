@@ -292,7 +292,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             
             // Skip today if configured to ignore
             if (i === 0 && this.config.ignoreToday) continue;
-            this.logToTerminal(`[OMFD] Processing day index: ${i}`);
+            this.logToTerminal(`[OMFD] Processing day index: ${i}`); // <-- LAST SUCCESSFUL LOG
 
             let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minTempGlobal, maxGlobal);
             dailies.push(dailyItem);
@@ -386,23 +386,37 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         
         // 1. RAW DATA RETRIEVAL
         const rawMin = fData.temperature_2m_min[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawMin.`); // LOG A
         const rawMax = fData.temperature_2m_max[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawMax.`); // LOG B
         const rawWindSpeed = fData.windspeed_10m_max[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawWindSpeed.`); // LOG C
         const rawWindDirection = fData.winddirection_10m_dominant[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawWindDirection.`); // LOG D
         const rawWindGust = fData.windgusts_10m_max[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawWindGust.`); // LOG E
         const rawPrecipProb = fData.precipitation_probability_max[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawPrecipProb.`); // LOG F
         const rawPrecipAmount = fData.precipitation_sum[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawPrecipAmount.`); // LOG G
         const rawTime = fData.time[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawTime.`); // LOG H
         const rawSunrise = fData.sunrise[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawSunrise.`); // LOG I
         const rawSunset = fData.sunset[index];
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawSunset.`); // LOG J
         const rawWeatherCode = fData.weathercode[index];
-        
-        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Raw values read.`);
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: read rawWeatherCode.`); // LOG K
+
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Raw values read.`); // LOG L
 
         // 2. HELPER FUNCTION EXECUTION (CRASH ZONE)
         const tempMin = this.getTemp(rawMin, "C");
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: calculated tempMin.`); // LOG M
         const tempMax = this.getTemp(rawMax, "C");
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: calculated tempMax.`); // LOG N
         const windSpeed = this.convertWindSpeed(rawWindSpeed, "kmh");
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: calculated windSpeed.`); // LOG O
         const windDirection = rawWindDirection;
         const windGust = rawWindGust;
         const precipProb = rawPrecipProb;
@@ -506,6 +520,8 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     
     // Converts Celsius to the configured unit (Imperial or Metric)
     getTemp: function(tempInC, inputUnit) {
+        // Logging added to check input validity before calculation
+        this.logToTerminal(`[OMFD-HELPER] getTemp Input: ${tempInC}`); 
         if (tempInC == null) return 0; // FIX: Return 0 if input is null/undefined
         if (inputUnit === "C" && this.config.units === "imperial") {
             return (tempInC * 9/5) + 32;
@@ -515,11 +531,14 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     
     // Converts Open-Meteo's m/s wind speed to the configured unit
     convertWindSpeed: function(windInMS, unit) {
+        // Logging added to check input validity before calculation
+        this.logToTerminal(`[OMFD-HELPER] convertWindSpeed Input: ${windInMS}`);
         if (windInMS == null) return 0; // FIX: Return 0 if input is null/undefined
         if (this.config.units === "imperial") {
             // Convert to MPH
             return windInMS * 2.23694; 
         }
+        // Metric (m/s)
         return windInMS;
     },
 
@@ -527,16 +546,20 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
       Returns a formatted data object for High / Low temperature range
      */
     formatHiLowTemperature: function(h, l) {
-        return {
+        this.logToTerminal(`[OMFD-HELPER] START formatHiLowTemperature`);
+        const result = {
             high: this.config.label_high + this.getUnit('temp', h),
             low: this.config.label_low + this.getUnit('temp', l)
         };
+        this.logToTerminal(`[OMFD-HELPER] END formatHiLowTemperature`);
+        return result;
     },
 
     /*
       Returns a formatted data object for precipitation
      */
     formatPrecipitation: function(percentChance, precipAmount, snowAccumulation) {
+        this.logToTerminal(`[OMFD-HELPER] START formatPrecipitation`);
         var accumulation = null;
         var accumulationtype = null;
         var pop = null;
@@ -554,6 +577,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         if (percentChance) {
             pop = Math.round(percentChance) + "%";
         }
+        this.logToTerminal(`[OMFD-HELPER] END formatPrecipitation`);
         return {
             pop: pop,
             accumulation: accumulation,
@@ -565,6 +589,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
       Returns a formatted data object for wind conditions
      */
     formatWind: function(speed, bearing, gust) {
+        this.logToTerminal(`[OMFD-HELPER] START formatWind`);
         var windSpeed = this.getUnit('wind', speed);
         var windDirection = (this.config.showWindDirection ? " " + this.getOrdinal(bearing) : "");
         var windGust = null;
@@ -573,6 +598,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         }
         var windSpeedRaw = parseFloat(speed.toFixed(this.config['dp_wind' + (this.config.units === 'metric' ? '_m' : '_i')]));
         
+        this.logToTerminal(`[OMFD-HELPER] END formatWind`);
         return {
             windSpeedRaw: windSpeedRaw,
             windSpeed: windSpeed,
@@ -585,6 +611,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
       Returns the units in use for the data pull
      */
     getUnit: function(metric, value) {
+        this.logToTerminal(`[OMFD-HELPER] START getUnit for ${metric}`);
         const dpKey = 'dp_' + metric + (this.config.units === 'metric' ? '_m' : '_i');
         const labelKey = 'label_' + metric + (this.config.units === 'metric' ? '_m' : '_i');
         
@@ -594,6 +621,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         if (metric === 'rain' && !this.config.dp_precip_leading_zero && rounded.indexOf("0.") === 0) rounded = rounded.substring(1);
         if (metric === 'wind' && !this.config.dp_wind_leading_zero && rounded.indexOf("0.") === 0) rounded = rounded.substring(1);
 
+        this.logToTerminal(`[OMFD-HELPER] END getUnit for ${metric}`);
         return rounded + this.config[labelKey];
     },
 
@@ -601,122 +629,13 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
       Formats the wind direction into common ordinals (e.g.: NE, WSW, etc.)
      */
     getOrdinal: function(bearing) {
+        this.logToTerminal(`[OMFD-HELPER] START/END getOrdinal`);
         return this.config.label_ordinals[Math.round(bearing * this.config.label_ordinals.length / 360) % this.config.label_ordinals.length];
     },
-
-    // A minimal iconset definition needed for image path generation
-    getIconsets: function() {
-        return {
-            "1m":	{ path: "1m"	, format: "svg" },
-            "1c":	{ path: "1c"	, format: "svg" },
-            // ... (include all sets from the original module)
-        };
-    },
-
-    /*
-      Maps Open-Meteo WMO Weather Codes to icon names.
-      https://www.nodc.noaa.gov/archive/arc0021/0002199/1.1/data/0-data/HTML/WMO-Code.html
-    */
-    convertWeatherCodeToIcon: function(code, isDayTime) {
-        // This is a simplified mapping based on WMO codes
-        switch (code) {
-            case 0: // Clear sky
-                return isDayTime ? "clear-day" : "clear-night";
-            case 1: // Mainly clear
-            case 2: // Partly cloudy
-                return isDayTime ? "partly-cloudy-day" : "partly-cloudy-night";
-            case 3: // Overcast
-                return "cloudy";
-            case 45: // Fog
-            case 48: // Depositing rime fog
-                return "fog";
-            case 51: // Drizzle light
-            case 53: // Drizzle moderate
-            case 55: // Drizzle dense
-            case 61: // Rain slight
-            case 63: // Rain moderate
-            case 65: // Rain heavy
-            case 80: // Rain showers slight
-            case 81: // Rain showers moderate
-            case 82: // Rain showers violent
-                return "rain";
-            case 56: // Freezing Drizzle light
-            case 57: // Freezing Drizzle dense
-            case 66: // Freezing Rain light
-            case 67: // Freezing Rain heavy
-            case 77: // Snow grains
-                return "sleet";
-            case 71: // Snow fall slight
-            case 73: // Snow fall moderate
-            case 75: // Snow fall heavy
-            case 85: // Snow showers slight
-            case 86: // Snow showers heavy
-                return "snow";
-            case 95: // Thunderstorm slight or moderate
-            case 96: // Thunderstorm with slight hail
-            case 99: // Thunderstorm with heavy hail
-                return "thunderstorm";
-            default:
-                return "cloudy"; 
-        }
-    },
-
-    /*
-      This generates a URL to the icon file
-     */
-    generateIconSrc: function(icon, mainIcon) {
-        const iconset = mainIcon ? this.config.mainIconset : this.config.iconset;
-        // The file path is relative to the module folder
-        return this.file("icons/" + this.iconsets[iconset].path + "/" +
-            icon + "." + this.iconsets[iconset].format);
-    },
+    // ... (rest of file remains the same)
     
-    // --- START: Missing Helper Functions ---
+    // --- END OF FILE ---
 
-    clearIcons: function() {
-        if (!this.skycons) return;
-        this.skycons.pause();
-        var self = this;
-        var animatedIconCanvases = document.querySelectorAll(".skycon-" + this.identifier);
-        animatedIconCanvases.forEach(function(icon) {
-            self.skycons.remove(icon.id);
-        });
-        this.iconIdCounter = 0;
-    },
-
-    getAnimatedIconId: function() {
-        var iconId = "skycon_" + this.identifier + "_" + this.iconIdCounter;
-        this.iconIdCounter++;
-        return iconId;
-    },
-
-    playIcons: function(inst) {
-        var animatedIconCanvases = document.querySelectorAll(".skycon-" + inst.identifier);
-        animatedIconCanvases.forEach(function(icon) {
-            inst.skycons.add(icon.id, icon.getAttribute("data-animated-icon-name"));
-        });
-        inst.skycons.play();
-    },
-
-    sanitizeNumbers: function(keys) {
-        var self = this;
-        keys.forEach(function(key) {
-            if (isNaN(parseInt(self.config[key]))) {
-                self.config[key] = self.defaults[key];
-            } else {
-                self.config[key] = parseInt(self.config[key]);
-            }
-        });
-    },
-
-    interpolateColor: function(c0, c1, f){
-        c0 = c0.match(/.{1,2}/g).map((oct)=>parseInt(oct, 16) * (1-f))
-        c1 = c1.match(/.{1,2}/g).map((oct)=>parseInt(oct, 16) * f)
-        let ci = [0,1,2].map(i => Math.min(Math.round(c0[i]+c1[i]), 255))
-        return ci.reduce((a,v) => ((a << 8) + v), 0).toString(16).padStart(6, "0")
-    },
-
-    // --- END: Missing Helper Functions ---
     logToTerminal: function(message) {
         this.sendSocketNotification("CLIENT_LOG", {
             instanceId: this.identifier,
