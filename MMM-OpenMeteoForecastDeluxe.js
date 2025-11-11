@@ -118,7 +118,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     },
 
     getTemplateData: function() {
-		// This prevents the 'reading path' crash on first module draw.
+		// FIX 2: Ensure iconsets is initialized before accessing it.
         if (!this.iconsets) {
             this.iconsets = this.getIconsets();
         }
@@ -150,8 +150,9 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         this.iconIdCounter = 0;
         this.formattedWeatherData = null;
         this.animatedIconDrawTimer = null;
-        this.iconsets = this.getIconsets(); // Define iconsets here or move to a separate function/file
+        this.iconsets = this.getIconsets(); 
         
+        // FIX 1: Define 'phrases' early to prevent crash in getTemplateData
         this.phrases = {
 			loading: this.translate("LOADING")
 		};
@@ -197,6 +198,12 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     },
 
     socketNotificationReceived: function(notification, payload) {
+        // FIX 3: LOG BRIDGE - Add handler for client-side logging
+        if (notification === "CLIENT_LOG") {
+            // Note: node_helper should handle printing this to the terminal
+            return; 
+        }
+
         if (notification === "OPENMETEO_FORECAST_DATA" && payload.instanceId === this.identifier) {
             
             // Clear animated icon cache
@@ -209,7 +216,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             this.weatherData = payload;
             
             // LOG 1: Confirm raw data payload arrival
-            this.logToTerminal("[OMFD] RAW PAYLOAD RECEIVED:", JSON.stringify(payload, null, 2).substring(0, 500) + '...');
+            this.logToTerminal("[OMFD] RAW PAYLOAD RECEIVED. Attempting processData.");
             
             this.formattedWeatherData = this.processWeatherData();
 			
@@ -244,7 +251,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         const currentHour = moment().hour();
         
         if (!rawDaily || !rawHourly) {
-			console.error("[OMFD] FATAL: Missing rawDaily or rawHourly array!");
+			this.logToTerminal("[OMFD] FATAL: Missing rawDaily or rawHourly array!");
 			return null;
 		}
 		const hoursData = this.transposeDataMatrix(rawHourly);
@@ -256,7 +263,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
 
         // 1. Find the Absolute Min/Max Temperature over the entire forecast range
         if (rawDaily.time.length === 0) {
-			console.error("[OMFD] FATAL: rawDaily.time array is empty!");
+			this.logToTerminal("[OMFD] FATAL: rawDaily.time array is empty!");
 			return null;
 		}
 	
@@ -265,14 +272,14 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             maxTempGlobal = Math.max(maxTempGlobal, this.getTemp(rawDaily.temperature_2m_max[i], "C"));
         }
         
-        this.logToTerminal('[OMFD] Global Temp Range: ${minTempGlobal}degC to ${maxTempGlobal}degC');
+        this.logToTerminal(`[OMFD] Global Temp Range: ${minTempGlobal}degC to ${maxTempGlobal}degC`);
 
         // 2. Build the daily forecast objects
         for (let i = 0; i < Math.min(rawDaily.time.length, this.config.maxDailiesToShow); i++) {
             
             // Skip today if configured to ignore
             if (i === 0 && this.config.ignoreToday) continue;
-            this.logToTerminal('[OMFD] Processing day index:: ${i}');
+            this.logToTerminal(`[OMFD] Processing day index: ${i}`);
 
             let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minTempGlobal, maxTempGlobal);
             dailies.push(dailyItem);
@@ -309,7 +316,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         
         // ------------------ Current Conditions Processing ------------------
         this.logToTerminal("[OMFD] Starting Current/Hourly Processing...");
-        // Use the new payload.current object for cureent temp/wind/code
+        
 		const rawCurrent = this.weatherData.current;
 
 		// Use the hourly data point closest to the current time for current conditions
@@ -320,7 +327,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         const todayDaily = this.dailyForecastItemFactory(rawDaily, 0, minTempGlobal, maxTempGlobal);
 
         // This object structure matches what your Nunjucks template expects (e.g., `forecast.currently.temperature`)
-        this.logToTerminal("[OMFD] Data object sucessfully built. Returning formatted data.");
+        this.logToTerminal("[OMFD] Data object successfully built. Returning formatted data.");
         return {
             "currently": {
                 temperature: this.getUnit('temp', this.getTemp(rawCurrent.temperature_2m, "C")),
@@ -390,32 +397,41 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         
         if (this.config.dailyForecastLayout === "bars") {
             const rangeTotal = maxGlobal - minGlobal;
-            fItem.bars = {
-                min: minGlobal,
-                max: maxGlobal,
-                total: rangeTotal,
-                interval: 100 / rangeTotal, // Percentage per degree
-            };
             
-            // Bar width is the day's temperature span
-            fItem.bars.barWidth = Math.round(fItem.bars.interval * (tempMax - tempMin));
-            
-            // Left spacer width is the difference from the overall min to the day's low
-            fItem.bars.leftSpacerWidth = Math.round(fItem.bars.interval * (tempMin - minGlobal));
+            // CRITICAL CHECK: Prevent division by zero if all temperatures are the same
+            if (rangeTotal === 0) { 
+                this.logToTerminal("[OMFD] CRASH PREVENTED: Global temperature range is zero.");
+                fItem.bars = { leftSpacerWidth: 0, barWidth: 100, rightSpacerWidth: 0 };
+                fItem.colorStart = this.config.lowColor;
+                fItem.colorEnd = this.config.highColor;
+            } else {
+                fItem.bars = {
+                    min: minGlobal,
+                    max: maxGlobal,
+                    total: rangeTotal,
+                    interval: 100 / rangeTotal, // Percentage per degree
+                };
+                
+                // Bar width is the day's temperature span
+                fItem.bars.barWidth = Math.round(fItem.bars.interval * (tempMax - tempMin));
+                
+                // Left spacer width is the difference from the overall min to the day's low
+                fItem.bars.leftSpacerWidth = Math.round(fItem.bars.interval * (tempMin - minGlobal));
 
-            // Right spacer width is the difference from the day's high to the overall max
-            fItem.bars.rightSpacerWidth = Math.round(fItem.bars.interval * (maxGlobal - tempMax));
+                // Right spacer width is the difference from the day's high to the overall max
+                fItem.bars.rightSpacerWidth = Math.round(fItem.bars.interval * (maxGlobal - tempMax));
 
-            // Color interpolation for the gradient
-            var colorLo = this.config.lowColor.substring(1);
-            var colorHi = this.config.highColor.substring(1);
-            
-            // Calculate color factor at the start and end of this day's bar relative to the global range
-            var colorStartPos = (tempMin - minGlobal) / rangeTotal;
-            var colorEndPos = (tempMax - minGlobal) / rangeTotal;
-            
-            fItem.colorStart = '#' + this.interpolateColor(colorLo, colorHi, colorStartPos);
-            fItem.colorEnd = '#' + this.interpolateColor(colorLo, colorHi, colorEndPos);
+                // Color interpolation for the gradient
+                var colorLo = this.config.lowColor.substring(1);
+                var colorHi = this.config.highColor.substring(1);
+                
+                // Calculate color factor at the start and end of this day's bar relative to the global range
+                var colorStartPos = (tempMin - minGlobal) / rangeTotal;
+                var colorEndPos = (tempMax - minGlobal) / rangeTotal;
+                
+                fItem.colorStart = '#' + this.interpolateColor(colorLo, colorHi, colorStartPos);
+                fItem.colorEnd = '#' + this.interpolateColor(colorLo, colorHi, colorEndPos);
+            }
         }
         
         // --------- Precipitation ---------
@@ -524,159 +540,4 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         if (this.config.showWindGust && gust) {
             windGust = this.config.label_gust_wrapper_prefix + this.config.label_maximum + this.getUnit('gust', this.convertWindSpeed(gust, "kmh")) + this.config.label_gust_wrapper_suffix;
         }
-        var windSpeedRaw = parseFloat(speed.toFixed(this.config['dp_wind' + (this.config.units === 'metric' ? '_m' : '_i')]));
-        
-        return {
-            windSpeedRaw: windSpeedRaw,
-            windSpeed: windSpeed,
-            windDirection: windDirection,
-            windGust: windGust
-        };
-    },
-
-    /*
-      Returns the units in use for the data pull
-     */
-    getUnit: function(metric, value) {
-        const dpKey = 'dp_' + metric + (this.config.units === 'metric' ? '_m' : '_i');
-        const labelKey = 'label_' + metric + (this.config.units === 'metric' ? '_m' : '_i');
-        
-        var rounded = String(parseFloat(value.toFixed(this.config[dpKey])));
-
-        // Apply custom leading zero logic
-        if (metric === 'rain' && !this.config.dp_precip_leading_zero && rounded.indexOf("0.") === 0) rounded = rounded.substring(1);
-        if (metric === 'wind' && !this.config.dp_wind_leading_zero && rounded.indexOf("0.") === 0) rounded = rounded.substring(1);
-
-        return rounded + this.config[labelKey];
-    },
-
-    /*
-      Formats the wind direction into common ordinals (e.g.: NE, WSW, etc.)
-     */
-    getOrdinal: function(bearing) {
-        return this.config.label_ordinals[Math.round(bearing * this.config.label_ordinals.length / 360) % this.config.label_ordinals.length];
-    },
-
-    // A minimal iconset definition needed for image path generation
-    getIconsets: function() {
-        return {
-            "1m":	{ path: "1m"	, format: "svg" },
-            "1c":	{ path: "1c"	, format: "svg" },
-            // ... (include all sets from the original module)
-        };
-    },
-
-    /*
-      Maps Open-Meteo WMO Weather Codes to icon names.
-      https://www.nodc.noaa.gov/archive/arc0021/0002199/1.1/data/0-data/HTML/WMO-Code.html
-    */
-    convertWeatherCodeToIcon: function(code, isDayTime) {
-        // This is a simplified mapping based on WMO codes
-        switch (code) {
-            case 0: // Clear sky
-                return isDayTime ? "clear-day" : "clear-night";
-            case 1: // Mainly clear
-            case 2: // Partly cloudy
-                return isDayTime ? "partly-cloudy-day" : "partly-cloudy-night";
-            case 3: // Overcast
-                return "cloudy";
-            case 45: // Fog
-            case 48: // Depositing rime fog
-                return "fog";
-            case 51: // Drizzle light
-            case 53: // Drizzle moderate
-            case 55: // Drizzle dense
-            case 61: // Rain slight
-            case 63: // Rain moderate
-            case 65: // Rain heavy
-            case 80: // Rain showers slight
-            case 81: // Rain showers moderate
-            case 82: // Rain showers violent
-                return "rain";
-            case 56: // Freezing Drizzle light
-            case 57: // Freezing Drizzle dense
-            case 66: // Freezing Rain light
-            case 67: // Freezing Rain heavy
-            case 77: // Snow grains
-                return "sleet";
-            case 71: // Snow fall slight
-            case 73: // Snow fall moderate
-            case 75: // Snow fall heavy
-            case 85: // Snow showers slight
-            case 86: // Snow showers heavy
-                return "snow";
-            case 95: // Thunderstorm slight or moderate
-            case 96: // Thunderstorm with slight hail
-            case 99: // Thunderstorm with heavy hail
-                return "thunderstorm";
-            default:
-                return "cloudy"; 
-        }
-    },
-
-    /*
-      This generates a URL to the icon file
-     */
-    generateIconSrc: function(icon, mainIcon) {
-        const iconset = mainIcon ? this.config.mainIconset : this.config.iconset;
-        // The file path is relative to the module folder
-        return this.file("icons/" + this.iconsets[iconset].path + "/" +
-            icon + "." + this.iconsets[iconset].format);
-    },
-    
-    // ... (include other helper functions like clearIcons, getAnimatedIconId, playIcons, sanitizeNumbers, interpolateColor)
-    // For brevity, these helper functions are omitted here but must be included in your final file.
-    
-    // --- START: Missing Helper Functions from original MMM-AccuWeatherForecastDeluxe.js ---
-
-    clearIcons: function() {
-        if (!this.skycons) return;
-        this.skycons.pause();
-        var self = this;
-        var animatedIconCanvases = document.querySelectorAll(".skycon-" + this.identifier);
-        animatedIconCanvases.forEach(function(icon) {
-            self.skycons.remove(icon.id);
-        });
-        this.iconIdCounter = 0;
-    },
-
-    getAnimatedIconId: function() {
-        var iconId = "skycon_" + this.identifier + "_" + this.iconIdCounter;
-        this.iconIdCounter++;
-        return iconId;
-    },
-
-    playIcons: function(inst) {
-        var animatedIconCanvases = document.querySelectorAll(".skycon-" + inst.identifier);
-        animatedIconCanvases.forEach(function(icon) {
-            inst.skycons.add(icon.id, icon.getAttribute("data-animated-icon-name"));
-        });
-        inst.skycons.play();
-    },
-
-    sanitizeNumbers: function(keys) {
-        var self = this;
-        keys.forEach(function(key) {
-            if (isNaN(parseInt(self.config[key]))) {
-                self.config[key] = self.defaults[key];
-            } else {
-                self.config[key] = parseInt(self.config[key]);
-            }
-        });
-    },
-
-    interpolateColor: function(c0, c1, f){
-        c0 = c0.match(/.{1,2}/g).map((oct)=>parseInt(oct, 16) * (1-f))
-        c1 = c1.match(/.{1,2}/g).map((oct)=>parseInt(oct, 16) * f)
-        let ci = [0,1,2].map(i => Math.min(Math.round(c0[i]+c1[i]), 255))
-        return ci.reduce((a,v) => ((a << 8) + v), 0).toString(16).padStart(6, "0")
-    }
-
-    // --- END: Missing Helper Functions ---
-    logToTerminal: function(message) {
-        this.sendSocketNotification("CLIENT_LOG", {
-            instanceId: this.identifier,
-            message: message
-        });
-    },
-});
+        var windSpeedRaw = parseFloat(speed.toFixed(this.config['dp_wind' + (this.config.units === 'metric' ? '_m' : '_i')
