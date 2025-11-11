@@ -7,7 +7,6 @@
 
 var NodeHelper = require("node_helper");
 var moment = require("moment");
-var needle = require("needle"); 
 
 module.exports = NodeHelper.create({
 
@@ -17,8 +16,9 @@ module.exports = NodeHelper.create({
 
     socketNotificationReceived: function(notification, payload) {
         
-        // --- 1. CLIENT LOG HANDLER (Must be first for debugging) ---
+        // --- 1. CLIENT LOG HANDLER (Prioritized for immediate output) ---
         if (notification === "CLIENT_LOG") {
+            // Log message directly to the terminal
             console.log(`[CLIENT LOG] ${payload.message}`);
             return; 
         }
@@ -32,7 +32,8 @@ module.exports = NodeHelper.create({
                 console.log("[MMM-OpenMeteoForecastDeluxe] ** ERROR ** Latitude or Longitude not provided.");
                 return; 
             } 
-
+            
+            // We use the last known good API structure (minus the problematic wind gusts)
             var apiUrl = `https://api.open-meteo.com/v1/forecast?` +
                 `latitude=${payload.latitude}` +
                 `&longitude=${payload.longitude}` +
