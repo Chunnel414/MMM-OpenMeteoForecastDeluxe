@@ -118,6 +118,11 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     },
 
     getTemplateData: function() {
+		// This prevents the 'reading path' crash on first module draw.
+        if (!this.iconsets) {
+            this.iconsets = this.getIconsets();
+        }
+		
         return {
             phrases: this.phrases,
             loading: this.formattedWeatherData == null ? true : false,
