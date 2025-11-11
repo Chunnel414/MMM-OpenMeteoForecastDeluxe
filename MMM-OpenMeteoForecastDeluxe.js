@@ -370,18 +370,41 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
 
         var fItem = new Object();
         
-        // 1. RAW DATA RETRIEVAL (The Const Declarations - CRASH ZONE)
+        // --- CATCH AND LOG BLOCK ---
         const rawMin = fData.temperature_2m_min[index];
         const rawMax = fData.temperature_2m_max[index];
         const rawWindSpeed = fData.windspeed_10m_max[index];
-        const rawWindDirection = fData.winddirection_10m_dominant[index];
-        const rawWindGust = fData.windgusts_10m_max[index];
-        const rawPrecipProb = fData.precipitation_probability_max[index];
-        const rawPrecipAmount = fData.precipitation_sum[index];
-        const rawTime = fData.time[index];
-        const rawSunrise = fData.sunrise[index];
-        const rawSunset = fData.sunset[index];
-        const rawWeatherCode = fData.weathercode[index];
+        
+        // 1. Temperature Calculation (Test 1)
+        let tempMin, tempMax;
+        try {
+            tempMin = this.getTemp(rawMin, "C");
+            tempMax = this.getTemp(rawMax, "C");
+            this.logToTerminal(`[OMFD-CRASH] Day ${index}: PASS: Temp helper succeeded.`);
+        } catch (e) {
+            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on Temp helpers. Raw Min: ${rawMin}, Raw Max: ${rawMax}.`);
+            tempMin = 0; tempMax = 0; // Set safe defaults to continue
+        }
+
+        // 2. Wind Speed Calculation (Test 2)
+        let windSpeed;
+        try {
+            windSpeed = this.convertWindSpeed(rawWindSpeed, "kmh");
+            this.logToTerminal(`[OMFD-CRASH] Day ${index}: PASS: WindSpeed helper succeeded.`);
+        } catch (e) {
+            this.logToTerminal(`[OMFD-CRASH] Day ${index}: FAILED on WindSpeed helper. Raw Speed: ${rawWindSpeed}.`);
+            windSpeed = 0; // Set safe defaults to continue
+        }
+        
+        // 3. The remaining safe variables (which are primitives or moment objects)
+        const windDirection = fData.winddirection_10m_dominant[index];
+        const windGust = fData.windgusts_10m_max[index]; // Check this value if temp/wind fail!
+        const precipProb = fData.precipitation_probability_max[index];
+        const precipAmount = fData.precipitation_sum[index];
+        const date = moment.unix(fData.time[index]);
+
+        this.logToTerminal(`[OMFD-FACTORY] Day ${index}: All consts defined. TMin=${tempMin}, WindS=${windSpeed}`);
+        // --- END CATCH AND LOG BLOCK ---
         
         this.logToTerminal(`[OMFD-FACTORY] Day ${index}: Raw values read.`);
 
