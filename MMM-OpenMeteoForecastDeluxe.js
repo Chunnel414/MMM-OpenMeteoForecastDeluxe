@@ -119,9 +119,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
 
     getTemplateData: function() {
         return {
-            phrases: {
-                loading: this.translate("LOADING")
-            },
+            phrases: this.phrases,
             loading: this.formattedWeatherData == null ? true : false,
             config: this.config,
             forecast: this.formattedWeatherData,
@@ -148,6 +146,10 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         this.formattedWeatherData = null;
         this.animatedIconDrawTimer = null;
         this.iconsets = this.getIconsets(); // Define iconsets here or move to a separate function/file
+        
+        this.phrases = {
+			loading: this.translate("LOADING")
+		};
 
         // Initialize Skycons if animated icons are used (assuming the file is available)
         if (this.config.useAnimatedIcons) {
@@ -200,8 +202,15 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             // Process weather data
             this.dataRefreshTimeStamp = moment().format("x");
             this.weatherData = payload;
+            
+            // LOG 1: Confirm raw data payload arrival
+            console.log("[OMFD] RAW PAYLOAD RECEIVED:", JSON.stringify(payload, null, 2).substring(0, 500) + '...');
+            
             this.formattedWeatherData = this.processWeatherData();
-
+			
+			// LOG 2: Confirm processWeatherData completed
+			console.log("[OMFD] PROCESS DATA COMPLETE. RENDER STARTING.");
+			
             this.updateDom(this.config.updateFadeSpeed);
 
             // Start animated icons if needed
@@ -223,12 +232,17 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
       This is the core function for processing Open-Meteo's parallel arrays and calculating bar properties.
     */
     processWeatherData: function() {
+        console.log("[OMFD] Starting processWeatherData...");
         
         const rawDaily = this.weatherData.daily;
         const rawHourly = this.weatherData.hourly;
         const currentHour = moment().hour();
         
-        if (!rawDaily || !rawHourly) return null;
+        if (!rawDaily || !rawHourly) {
+			console.error("[OMFD] FATAL: Missing rawDaily or rawHourly array!");
+			return null;
+		}
+		const hoursData = this.transposeDataMatrix(rawHourly);
 
         // ------------------ Daily Forecast Processing ------------------
         var dailies = [];
@@ -236,25 +250,32 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         var maxTempGlobal = -Number.MAX_VALUE;
 
         // 1. Find the Absolute Min/Max Temperature over the entire forecast range
-        for (let i = 0; i < rawDaily.time.length; i++) {
+        if (rawDaily.time.length === 0) {
+			console.error("[OMFD] FATAL: rawDaily.time array is empty!");
+			return null;
+		}
+	
+		for (let i = 0; i < rawDaily.time.length; i++) {
             minTempGlobal = Math.min(minTempGlobal, this.getTemp(rawDaily.temperature_2m_min[i], "C"));
             maxTempGlobal = Math.max(maxTempGlobal, this.getTemp(rawDaily.temperature_2m_max[i], "C"));
         }
+        
+        console.log('[OMFD] Global Temp Range: ${minTempGlobal}degC to ${maxTempGlobal}degC');
 
         // 2. Build the daily forecast objects
         for (let i = 0; i < Math.min(rawDaily.time.length, this.config.maxDailiesToShow); i++) {
             
             // Skip today if configured to ignore
             if (i === 0 && this.config.ignoreToday) continue;
+            console.log('[OMFD] Processing day index:: ${i}');
 
             let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minTempGlobal, maxTempGlobal);
             dailies.push(dailyItem);
         }
+        console.log("[OMFD] Daily forecast array created. Starting hourly/current processing.");
 
         // ------------------ Hourly Forecast Processing ------------------
-        var hourlies = [];
-        const hoursData = this.transposeDataMatrix(rawHourly);
-        
+        var hourlies = [];        
         var displayCounter = 0;
         var currentIndex = 0; 
         
@@ -282,28 +303,32 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
         }
         
         // ------------------ Current Conditions Processing ------------------
-        
-        // Use the hourly data point closest to the current time for current conditions
+        console.log("[OMFD] Starting Current/Hourly Processing...");
+        // Use the new payload.current object for cureent temp/wind/code
+		const rawCurrent = this.weatherData.current;
+
+		// Use the hourly data point closest to the current time for current conditions
         const currentHourIndex = rawHourly.time.findIndex(t => moment.unix(t).hour() === currentHour);
-        const currentData = hoursData[currentHourIndex] || hoursData[0]; 
+        const hourlyCurrentData = hoursData[currentHourIndex] || hoursData[0]; 
         
         // Use the first day of the daily forecast for today's high/low
         const todayDaily = this.dailyForecastItemFactory(rawDaily, 0, minTempGlobal, maxTempGlobal);
 
         // This object structure matches what your Nunjucks template expects (e.g., `forecast.currently.temperature`)
+        console.log("[OMFD] Data object sucessfully built. Returning formatted data.");
         return {
             "currently": {
-                temperature: this.getUnit('temp', this.getTemp(currentData.temperature_2m, "C")),
-                feelslike: this.getUnit('temp', this.getTemp(currentData.apparent_temperature, "C")),
+                temperature: this.getUnit('temp', this.getTemp(rawCurrent.temperature_2m, "C")),
+                feelslike: this.getUnit('temp', this.getTemp(rawCurrent.apparent_temperature, "C")),
                 animatedIconId: this.config.useAnimatedIcons ? this.getAnimatedIconId() : null,
-                animatedIconName: this.convertWeatherCodeToIcon(currentData.weathercode, moment().isBetween(todayDaily.sunrise, todayDaily.sunset)),
-                iconPath: this.generateIconSrc(this.convertWeatherCodeToIcon(currentData.weathercode, moment().isBetween(todayDaily.sunrise, todayDaily.sunset)), true),
+                animatedIconName: this.convertWeatherCodeToIcon(rawCurrent.weathercode, moment().isBetween(todayDaily.sunrise, todayDaily.sunset)),
+                iconPath: this.generateIconSrc(this.convertWeatherCodeToIcon(rawCurrent.weathercode, moment().isBetween(todayDaily.sunrise, todayDaily.sunset)), true),
                 tempRange: todayDaily.tempRange,
-                precipitation: this.formatPrecipitation(currentData.precipitation_probability, currentData.precipitation, null),
+                precipitation: this.formatPrecipitation(hourlyCurrentData.precipitation_probability, hourlyCurrentData.precipitation, null),
                 wind: this.formatWind(
-                    this.convertWindSpeed(currentData.windspeed_10m, "ms"), 
-                    currentData.winddirection_10m, 
-                    currentData.windgusts_10m
+                    this.convertWindSpeed(rawCurrent.windspeed_10m, "ms"), 
+                    rawCurrent.winddirection_10m, 
+                    rawCurrent.windgusts_10m
                 ),
                 sunrise: todayDaily.sunrise,
                 sunset: todayDaily.sunset,

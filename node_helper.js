@@ -37,8 +37,8 @@ module.exports = NodeHelper.create({
                 "latitude=" + payload.latitude +
                 "&longitude=" + payload.longitude +
                 // REQUEST HOURLY AND CURRENT WEATHER DATA
-                "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,windspeed_10m,winddirection_10m,windgusts_10m,weathercode" +
-                "&current_weather=true" + 
+		        "&current=temperature_2m,apparent_temperature,precipitation_probability,precipitation,windspeed_10m,winddirection_10m,windgusts_10m,weathercode" +
+                "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,windspeed_10m,winddirection_10m,windgusts_10m,weathercode" + 
                 // REQUEST DAILY DATA FOR FORECAST
                 "&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max,winddirection_10m_dominant,precipitation_probability_max,precipitation_sum,time" +
                 "&timeformat=unixtime" +
@@ -51,25 +51,33 @@ module.exports = NodeHelper.create({
             console.log("[MMM-OpenMeteoForecastDeluxe] Getting data from: " + apiUrl);
                 
             (async () => {
-                try {
-                    const resp = await fetch(apiUrl);
-                    if (!resp.ok) {
-                        throw new Error(`HTTP error! status: ${resp.status}`);
-                    }
-                    const json = await resp.json();
-                    
-                    // Add instanceId to the payload before sending back
-                    json.instanceId = payload.instanceId;
-
-                    // The Open-Meteo daily data is nested under the 'daily' property
-                    self.sendSocketNotification("OPENMETEO_FORECAST_DATA", json);
-                    console.log("[MMM-OpenMeteoForecastDeluxe] Successfully retrieved and sent Open-Meteo data.");
-
-                } catch (error) {
-                    console.error("[MMM-OpenMeteoForecastDeluxe] ** ERROR ** Failed to fetch weather data: " + error);
-                    self.sendSocketNotification("OPENMETEO_FETCH_ERROR", { instanceId: payload.instanceId, error: error.message });
-                }
-            })();
+				try {
+					// Use a standard fetch request with a timeout
+					const controller = new AbortController();
+					const timeoutID = setTimeout(() => controler.abort(), 10000); // 10s timeout
+					
+					const resp = await fetch(apiUrl, { signal: controller.signal });
+					clearTimeout(timeoutId);
+					
+					if ((!resp.ok) {
+						// Throw error with the status code for better debugging
+						throw new Error(`HTTP Error! Status: ${resp.status}`);
+					}
+					
+					const json = await resp.json();
+					
+					// Add instanceId to the payload before sending back
+					json.instanceId = payload.instanceId;
+					
+					self.sendSocketNotification("OPENMETEO_FORECAST_DATA", json);
+					console.log("[OMFD] Successfully retrieved and sent Open-Meteo data.");
+				}
+				catch (error) {
+					// This will log the specific network error (e.g., "AbortError" or "fetch failed")
+					console.error("[OMFD] ** ERROR ** Failed to fetch weather data: " + error.name + " - " + error.message);
+					self.sendSocketNotification("OPENMETEO_FORECAST_DATA", { instanceIdL payload.instanceId, error: error.message });
+				}
+			})();
         }
     }
 });
