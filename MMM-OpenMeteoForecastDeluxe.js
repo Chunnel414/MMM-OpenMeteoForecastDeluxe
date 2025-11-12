@@ -321,6 +321,9 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
         this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Check if item is null.`);
         if (hoursData[currentIndex] == null) break;
 
+		this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Hourly Data Time: ${hoursData[currentIndex].time}`);
+        this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Hourly Data Temp: ${hoursData[currentIndex].temperature_2m}`);
+
         this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Pushing item and calling factory.`);
         hourlies.push(this.hourlyForecastItemFactory(hoursData[currentIndex], rawDaily));
 
