@@ -290,7 +290,8 @@ processWeatherData: function() {
     }
 
     // ------------------ Hourly Forecast Processing ------------------
-    var hourlies = [];        
+    this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
+	var hourlies = [];        
     var displayCounter = 0;
     var currentIndex = 0; 
     
@@ -316,6 +317,7 @@ processWeatherData: function() {
         currentIndex += this.config.hourlyForecastInterval;
         displayCounter++;
     }
+	this.logToTerminal(`[OMFD-PROCESS] Hourly forecast array built. Count: ${hourlies.length}`);
     
     // ------------------ Current Conditions Processing ------------------
     const rawCurrent = this.weatherData.current;
@@ -323,9 +325,10 @@ processWeatherData: function() {
     // Use the hourly data point closest to the current time for current conditions
     const currentHourIndex = rawHourly.time.findIndex(t => moment.unix(t).hour() === currentHour);
     const hourlyCurrentData = hoursData[currentHourIndex] || hoursData[0]; 
-    
+	
     // Use the first day of the daily forecast for today's high/low
     const todayDaily = this.dailyForecastItemFactory(rawDaily, 0, minTempGlobal, maxTempGlobal);
+	this.logToTerminal("[OMFD-PROCESS] Current Conditions variables (rawCurrent, hourlyCurrentData, todayDaily) defined.");
 
     // --- FINAL OBJECT CONSTRUCTION & DIAGNOSTIC LOGGING ---
 
