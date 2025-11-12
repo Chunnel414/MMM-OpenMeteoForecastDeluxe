@@ -325,7 +325,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
                 continue;
             }
 			// NEW DIAGNOSTIC LOG: Print the arguments being passed to the factory
-            this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: minG=${minGlobal}, maxG=${maxGlobal}`);
+            this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: minG=${minTempGlobal}, maxG=${maxTempGlobal}`);
             this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: rawDaily keys: ${Object.keys(rawDaily).join(', ')}`);
             this.logToTerminal(`[OMFD] Processing day index: ${i}`); // <-- LOG BEFORE CRASH
 
