@@ -329,7 +329,7 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: rawDaily keys: ${Object.keys(rawDaily).join(', ')}`);
             this.logToTerminal(`[OMFD] Processing day index: ${i}`); // <-- LOG BEFORE CRASH
 
-            let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minGlobal, maxGlobal); // CRASH IS HERE
+            let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minTempGlobal, maxTempGlobal); // CRASH IS HERE
             dailies.push(dailyItem);
             
             this.logToTerminal(`[OMFD-PROCESS] END dailyForecastItemFactory for index: ${i}`);
