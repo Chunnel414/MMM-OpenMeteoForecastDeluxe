@@ -324,9 +324,12 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
                 this.logToTerminal(`[OMFD-PROCESS] Skipping day index: ${i}`);
                 continue;
             }
+			// NEW DIAGNOSTIC LOG: Print the arguments being passed to the factory
+            this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: minG=${minGlobal}, maxG=${maxGlobal}`);
+            this.logToTerminal(`[OMFD-DEBUG-ARGS] Day ${i}: rawDaily keys: ${Object.keys(rawDaily).join(', ')}`);
             this.logToTerminal(`[OMFD] Processing day index: ${i}`); // <-- LOG BEFORE CRASH
 
-            let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minTempGlobal, maxGlobal);
+            let dailyItem = this.dailyForecastItemFactory(rawDaily, i, minGlobal, maxGlobal); // CRASH IS HERE
             dailies.push(dailyItem);
             
             this.logToTerminal(`[OMFD-PROCESS] END dailyForecastItemFactory for index: ${i}`);
