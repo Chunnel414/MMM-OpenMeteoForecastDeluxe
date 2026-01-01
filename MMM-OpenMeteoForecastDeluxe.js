@@ -428,9 +428,26 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
         // 4. TEMPERATURE RANGE & BARS LOGIC 
         fItem.tempRange = this.formatHiLowTemperature(tempMax, tempMin);
         
-        if (this.config.dailyForecastLayout === "bars") {
-            const rangeTotal = maxGlobal - minGlobal;
-        }
+		if (this.config.dailyForecastLayout === "bars") {
+		    const rangeTotal = maxGlobal - minGlobal;
+		    const dayRange = tempMax - tempMin;
+		
+		    // These are the specific variables the .njk file is looking for:
+		    fItem.bars = {
+		        leftSpacerWidth: rangeTotal > 0 ? ((tempMin - minGlobal) / rangeTotal) * 100 : 0,
+		        barWidth: rangeTotal > 0 ? (dayRange / rangeTotal) * 100 : 100,
+		        rightSpacerWidth: rangeTotal > 0 ? ((maxGlobal - tempMax) / rangeTotal) * 100 : 0
+		    };
+		
+		    // Calculate the colors for the bar gradient if relativeColors is true
+		    if (this.config.relativeColors) {
+		        const startFactor = rangeTotal > 0 ? (tempMin - minGlobal) / rangeTotal : 0;
+		        const endFactor = rangeTotal > 0 ? (tempMax - minGlobal) / rangeTotal : 1;
+		        
+		        fItem.colorStart = "#" + this.interpolateColor(this.config.lowColor.replace('#',''), this.config.highColor.replace('#',''), startFactor);
+		        fItem.colorEnd = "#" + this.interpolateColor(this.config.lowColor.replace('#',''), this.config.highColor.replace('#',''), endFactor);
+		    }
+		}
         
         // 5. PRECIPITATION AND WIND
         fItem.precipitation = this.formatPrecipitation(precipProb, precipAmount, null);
