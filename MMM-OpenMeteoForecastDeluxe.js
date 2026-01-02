@@ -388,6 +388,19 @@ processWeatherData: function() {
         else if (index === 1 && this.config.showDayAsTomorrowInDailyForecast) fItem.day = this.config.label_tomorrow;
         else fItem.day = this.config.label_days[date.format("d")];
 
+		// --- ADD THIS ICON LOGIC HERE ---
+			// 1. Convert the raw weather code into a standard icon name (e.g., "rain", "cloudy")
+			const iconName = this.convertWeatherCodeToIcon(rawWeatherCode, true); // Daily is always 'true' for daytime icon
+			
+			// 2. Set the animated icon properties if you use them
+			if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
+			    fItem.animatedIconId = this.getAnimatedIconId();
+			    fItem.animatedIconName = iconName;
+			}
+			
+			// 3. Generate the actual file path for the icon
+			fItem.iconPath = this.generateIconSrc(iconName);
+
         // 4. TEMPERATURE RANGE & BARS LOGIC 
         fItem.tempRange = this.formatHiLowTemperature(tempMax, tempMin);
         
