@@ -103,7 +103,6 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
     validDailyLayouts: ["tiled", "table", "bars"],
 
     getScripts: function() {
-        this.logToTerminal("[OMFD-GETSCRIPT] Running getScripts.");
         return ["moment.js", this.file("skycons.js"), this.file("MMM-OpenMeteoForecastDeluxe.js")];
     },
 
@@ -214,13 +213,9 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
             // Process weather data
             this.dataRefreshTimeStamp = moment().format("x");
             this.weatherData = payload;
-            
-            this.logToTerminal(`[OMFD] RAW PAYLOAD RECEIVED. Attempting processData.`);
-            
+
             this.formattedWeatherData = this.processWeatherData();
-			
-			this.logToTerminal("[OMFD-SOCKET] PROCESS DATA COMPLETE. Calling updateDom.");
-			
+
             this.updateDom(this.config.updateFadeSpeed);
 
             // Start animated icons if needed
@@ -236,14 +231,12 @@ Module.register("MMM-OpenMeteoForecastDeluxe", {
                 }, 100);
             }
         }
-        this.logToTerminal(`[OMFD-SOCKET] END socketNotificationReceived: ${notification}`);
     },
 
 /*
   This is the core function for processing Open-Meteo's parallel arrays and calculating bar properties.
 */
 processWeatherData: function() {
-    this.logToTerminal("[OMFD-PROCESS] START processWeatherData.");
     
     const rawDaily = this.weatherData.daily;
     const rawHourly = this.weatherData.hourly;
@@ -290,48 +283,29 @@ processWeatherData: function() {
     }
 
     // ------------------ Hourly Forecast Processing ------------------
-this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
     var hourlies = [];        
     var displayCounter = 0;
     var currentIndex = 0; 
     
     // Find the index of the current hour (to start from now + interval)
-    this.logToTerminal("[OMFD-H-DBG] Calculating nowUnix.");
     const nowUnix = moment().unix();
-    this.logToTerminal(`[OMFD-H-DBG] nowUnix: ${nowUnix}`);
 
-    this.logToTerminal("[OMFD-H-DBG] Calculating startIndex.");
     let startIndex = hoursData.findIndex(h => moment.unix(h.time).unix() > nowUnix);
-    this.logToTerminal(`[OMFD-H-DBG] startIndex: ${startIndex}`);
 
     // Adjust to the next interval if needed
-    this.logToTerminal("[OMFD-H-DBG] Adjusting startIndex with Interval.");
     while (startIndex > 0 && (startIndex % this.config.hourlyForecastInterval) !== 0) {
         startIndex++;
-        this.logToTerminal(`[OMFD-H-DBG] startIndex adjusted: ${startIndex}`);
     }
     
     if (startIndex === -1) startIndex = 0; // Fallback if no future hour found
-    this.logToTerminal(`[OMFD-H-DBG] Final startIndex: ${startIndex}`);
-
     currentIndex = startIndex;
 
-    this.logToTerminal(`[OMFD-H-DBG] Starting main loop. Initial currentIndex: ${currentIndex}`);
     while (displayCounter < this.config.maxHourliesToShow) {
-        this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Check if item is null.`);
         if (hoursData[currentIndex] == null) break;
-
-		this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Hourly Data Time: ${hoursData[currentIndex].time}`);
-        this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Hourly Data Temp: ${hoursData[currentIndex].temperature_2m}`);
-
-        this.logToTerminal(`[OMFD-H-DBG] Loop ${displayCounter}: Pushing item and calling factory.`);
         hourlies.push(this.hourlyForecastItemFactory(hoursData[currentIndex], rawDaily));
-
         currentIndex += this.config.hourlyForecastInterval;
         displayCounter++;
-    }
-    this.logToTerminal(`[OMFD-PROCESS] Hourly forecast array built. Count: ${hourlies.length}`);
-    
+    }    
     // ------------------ Current Conditions Processing ------------------
     const rawCurrent = this.weatherData.current;
 
@@ -341,7 +315,6 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
 	
     // Use the first day of the daily forecast for today's high/low
     const todayDaily = this.dailyForecastItemFactory(rawDaily, 0, minTempGlobal, maxTempGlobal);
-	this.logToTerminal("[OMFD-PROCESS] Current Conditions variables (rawCurrent, hourlyCurrentData, todayDaily) defined.");
 
     // --- FINAL OBJECT CONSTRUCTION & DIAGNOSTIC LOGGING ---
 
@@ -366,16 +339,6 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
         "hourly": hourlies,
         "daily": dailies,
     };
-    
-    // CRITICAL DIAGNOSTIC STEP: Log the structure of the object passed to Nunjucks
-    this.logToTerminal(`[OMFD-PROCESS] FINAL DATA OBJECT READY.`);
-    this.logToTerminal(`[OMFD-PROCESS] FINAL PAYLOAD (Hourly Count: ${hourlies.length}, Daily Count: ${dailies.length}):`);
-    this.logToTerminal(`${JSON.stringify(finalDataObject)}`);
-    
-    // -------------------------------------------------------------------
-
-    this.logToTerminal("[OMFD-PROCESS] All processing finished. Building return object.");
-    
     return finalDataObject;
 },
     
@@ -457,10 +420,7 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
 
     // ------------------ Hourly Forecast Item Factory ------------------
 
-	hourlyForecastItemFactory: function(hData, rawDaily) {
-	    // We can keep this one log to confirm the loop is running
-	    this.logToTerminal(`[OMFD-H-FACTORY] Processing Hourly Data for: ${hData.time}`);
-	    
+	hourlyForecastItemFactory: function(hData, rawDaily) {   
 	    var fItemH = {};
 	    const date = moment.unix(hData.time);
 	    const hourIndex = rawDaily.time.findIndex(t => moment.unix(t).day() === date.day());
@@ -670,28 +630,21 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
     /*
       This generates a URL to the icon file
      */
-	generateIconSrc: function(icon, mainIcon) {
-	    this.logToTerminal(`[OMFD-ICON-TRACE] START generateIconSrc for: ${icon}`);
-	    
+	generateIconSrc: function(icon, mainIcon) {	    
 	    const iconset = mainIcon ? this.config.mainIconset : this.config.iconset;
-	    this.logToTerminal(`[OMFD-ICON-TRACE] Selected iconset key: ${iconset}`);
 	
 	    if (!this.iconsets) {
-	        this.logToTerminal(`[OMFD-ICON-TRACE] FATAL: this.iconsets is UNDEFINED`);
 	        return "";
 	    }
 	
 	    if (!this.iconsets[iconset]) {
-	        this.logToTerminal(`[OMFD-ICON-TRACE] FATAL: iconset "${iconset}" not found in this.iconsets`);
 	        return "";
 	    }
 	
 	    const path = this.iconsets[iconset].path;
 	    const format = this.iconsets[iconset].format;
-	    this.logToTerminal(`[OMFD-ICON-TRACE] Building path with: ${path} and ${format}`);
 	
 	    const result = this.file("icons/" + path + "/" + icon + "." + format);
-	    this.logToTerminal(`[OMFD-ICON-TRACE] END generateIconSrc. Result: ${result}`);
 	    return result;
 	},
     
