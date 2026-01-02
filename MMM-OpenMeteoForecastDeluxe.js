@@ -690,13 +690,30 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
     /*
       This generates a URL to the icon file
      */
-    generateIconSrc: function(icon, mainIcon) {
-        const iconset = mainIcon ? this.config.mainIconset : this.config.iconset;
-        // The file path is relative to the module folder
-        const result = this.file("icons/" + this.iconsets[iconset].path + "/" +
-            icon + "." + this.iconsets[iconset].format);
-        return result;
-    },
+	generateIconSrc: function(icon, mainIcon) {
+	    this.logToTerminal(`[OMFD-ICON-TRACE] START generateIconSrc for: ${icon}`);
+	    
+	    const iconset = mainIcon ? this.config.mainIconset : this.config.iconset;
+	    this.logToTerminal(`[OMFD-ICON-TRACE] Selected iconset key: ${iconset}`);
+	
+	    if (!this.iconsets) {
+	        this.logToTerminal(`[OMFD-ICON-TRACE] FATAL: this.iconsets is UNDEFINED`);
+	        return "";
+	    }
+	
+	    if (!this.iconsets[iconset]) {
+	        this.logToTerminal(`[OMFD-ICON-TRACE] FATAL: iconset "${iconset}" not found in this.iconsets`);
+	        return "";
+	    }
+	
+	    const path = this.iconsets[iconset].path;
+	    const format = this.iconsets[iconset].format;
+	    this.logToTerminal(`[OMFD-ICON-TRACE] Building path with: ${path} and ${format}`);
+	
+	    const result = this.file("icons/" + path + "/" + icon + "." + format);
+	    this.logToTerminal(`[OMFD-ICON-TRACE] END generateIconSrc. Result: ${result}`);
+	    return result;
+	},
     
     // --- START: Missing Helper Functions ---
 
