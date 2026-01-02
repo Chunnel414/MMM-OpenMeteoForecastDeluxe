@@ -495,16 +495,25 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
 	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start wind calc.`);
 	    fItemH.wind = (this.formatWind(this.convertWindSpeed(hData.windspeed_10m, "kmh"), hData.winddirection_10m, hData.windgusts_10m));
 	
-	    // --------- Icon ---------
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start icon calc.`);
-	    if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
-	        fItemH.animatedIconId = this.getAnimatedIconId();
-	        fItemH.animatedIconName = this.convertWeatherCodeToIcon(hData.weathercode, isDayTime);
-	    }
-	    fItemH.iconPath = this.generateIconSrc(this.convertWeatherCodeToIcon(hData.weathercode, isDayTime));
-	    
-	    this.logToTerminal(`[OMFD-H-FACTORY] END hourlyForecastItemFactory logic.`);
-	    return fItemH;
+		// --------- Icon ---------
+		    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start icon calc.`);
+		    
+		    this.logToTerminal(`[OMFD-H-TRACE] WeatherCode: ${hData.weathercode}, isDay: ${isDayTime}`);
+		    const iconName = this.convertWeatherCodeToIcon(hData.weathercode, isDayTime);
+		    this.logToTerminal(`[OMFD-H-TRACE] iconName determined: ${iconName}`);
+		
+		    if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
+		        this.logToTerminal(`[OMFD-H-TRACE] Registering animated icon.`);
+		        fItemH.animatedIconId = this.getAnimatedIconId();
+		        fItemH.animatedIconName = iconName;
+		    }
+		
+		    this.logToTerminal(`[OMFD-H-TRACE] Generating Icon Source path.`);
+		    fItemH.iconPath = this.generateIconSrc(iconName);
+		    this.logToTerminal(`[OMFD-H-TRACE] Icon Path: ${fItemH.iconPath}`);
+		    
+		    this.logToTerminal(`[OMFD-H-FACTORY] END hourlyForecastItemFactory logic.`);
+		    return fItemH;
 	},
     
     // ------------------ Helper and Conversion Functions ------------------
