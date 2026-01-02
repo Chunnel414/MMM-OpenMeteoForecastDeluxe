@@ -430,7 +430,7 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
         
 		if (this.config.dailyForecastLayout === "bars") {
 		    const rangeTotal = maxGlobal - minGlobal;
-		    /*const dayRange = tempMax - tempMin;
+		    const dayRange = tempMax - tempMin;
 		
 		    // These are the specific variables the .njk file is looking for:
 		    fItem.bars = {
@@ -446,7 +446,7 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
 		        
 		        fItem.colorStart = "#" + this.interpolateColor(this.config.lowColor.replace('#',''), this.config.highColor.replace('#',''), startFactor);
 		        fItem.colorEnd = "#" + this.interpolateColor(this.config.lowColor.replace('#',''), this.config.highColor.replace('#',''), endFactor);
-		    }*/
+		    }
 		}
         
         // 5. PRECIPITATION AND WIND
@@ -458,62 +458,33 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
     // ------------------ Hourly Forecast Item Factory ------------------
 
 	hourlyForecastItemFactory: function(hData, rawDaily) {
-	    this.logToTerminal(`[OMFD-H-FACTORY] START hourlyForecastItemFactory logic.`);
+	    // We can keep this one log to confirm the loop is running
+	    this.logToTerminal(`[OMFD-H-FACTORY] Processing Hourly Data for: ${hData.time}`);
+	    
 	    var fItemH = {};
-	    
-	    // forensics on hData
-	    this.logToTerminal(`[OMFD-H-TRACE] hData status: ${hData ? "Exists" : "MISSING"}`);
-	    if (hData) this.logToTerminal(`[OMFD-H-TRACE] hData.time: ${hData.time}`);
-	
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start const date.`);
 	    const date = moment.unix(hData.time);
-	    
-	    // forensics on rawDaily
-	    this.logToTerminal(`[OMFD-H-TRACE] rawDaily.time array status: ${rawDaily && rawDaily.time ? "Array found" : "MISSING"}`);
-	    
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start const hourIndex.`);
-	    // We break the findIndex into a visible variable for logging
 	    const hourIndex = rawDaily.time.findIndex(t => moment.unix(t).day() === date.day());
-	    this.logToTerminal(`[OMFD-H-TRACE] RESULT: hourIndex is: ${hourIndex}`);
+	
+	    // SAFETY CHECK: If no matching day is found, we use the first day (index 0) 
+	    // as a fallback for sunrise/sunset instead of crashing with index -1.
+	    const safeIndex = hourIndex === -1 ? 0 : hourIndex;
+	
+	    const isDayTime = date.isBetween(moment.unix(rawDaily.sunrise[safeIndex]), moment.unix(rawDaily.sunset[safeIndex]));
 	    
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start const isDayTime.`);
-	    // CRASH ZONE: If hourIndex is -1, the next line crashes the module
-	    const isDayTime = date.isBetween(moment.unix(rawDaily.sunrise[hourIndex]), moment.unix(rawDaily.sunset[hourIndex]));
-	    this.logToTerminal(`[OMFD-H-TRACE] isDayTime result: ${isDayTime}`);
-	    
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start time formatting.`);
 	    fItemH.time = date.format(this.config.label_timeFormat);
-	    
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start temperature calc.`);
 	    fItemH.temperature = this.getUnit('temp', this.getTemp(hData.temperature_2m, "C")); 
-	    
-	    // --------- Precipitation ---------
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start precipitation calc.`);
 	    fItemH.precipitation = this.formatPrecipitation(hData.precipitation_probability, hData.precipitation, null);
-	    
-	    // --------- Wind ---------
-	    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start wind calc.`);
 	    fItemH.wind = (this.formatWind(this.convertWindSpeed(hData.windspeed_10m, "kmh"), hData.winddirection_10m, hData.windgusts_10m));
 	
-		// --------- Icon ---------
-		    this.logToTerminal(`[OMFD-H-FACTORY] Step: Start icon calc.`);
-		    
-		    this.logToTerminal(`[OMFD-H-TRACE] WeatherCode: ${hData.weathercode}, isDay: ${isDayTime}`);
-		    const iconName = this.convertWeatherCodeToIcon(hData.weathercode, isDayTime);
-		    this.logToTerminal(`[OMFD-H-TRACE] iconName determined: ${iconName}`);
-		
-		    if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
-		        this.logToTerminal(`[OMFD-H-TRACE] Registering animated icon.`);
-		        fItemH.animatedIconId = this.getAnimatedIconId();
-		        fItemH.animatedIconName = iconName;
-		    }
-		
-		    this.logToTerminal(`[OMFD-H-TRACE] Generating Icon Source path.`);
-		    fItemH.iconPath = this.generateIconSrc(iconName);
-		    this.logToTerminal(`[OMFD-H-TRACE] Icon Path: ${fItemH.iconPath}`);
-		    
-		    this.logToTerminal(`[OMFD-H-FACTORY] END hourlyForecastItemFactory logic.`);
-		    return fItemH;
+	    const iconName = this.convertWeatherCodeToIcon(hData.weathercode, isDayTime);
+	
+	    if (this.config.useAnimatedIcons && !this.config.animateMainIconOnly) {
+	        fItemH.animatedIconId = this.getAnimatedIconId();
+	        fItemH.animatedIconName = iconName;
+	    }
+	    fItemH.iconPath = this.generateIconSrc(iconName);
+	    
+	    return fItemH;
 	},
     
     // ------------------ Helper and Conversion Functions ------------------
@@ -615,9 +586,18 @@ this.logToTerminal("[OMFD-PROCESS] START Hourly Forecast Processing.");
     // A minimal iconset definition needed for image path generation
     getIconsets: function() {
         return {
-            "1m":	{ path: "1m"	, format: "svg" },
-            "1c":	{ path: "1c"	, format: "svg" },
-            // ... (include all sets from the original module)
+			"1m":  { path: "1m",  format: "svg" },
+	        "1c":  { path: "1c",  format: "svg" },
+	        "2m":  { path: "2m",  format: "svg" },
+	        "2c":  { path: "2c",  format: "svg" },
+	        "3m":  { path: "3m",  format: "svg" },
+	        "3c":  { path: "3c",  format: "svg" },
+	        "4m":  { path: "4m",  format: "svg" },
+	        "4c":  { path: "4c",  format: "svg" },
+	        "5m":  { path: "5m",  format: "svg" },
+	        "5c":  { path: "5c",  format: "svg" },
+	        "6fa": { path: "6fa", format: "svg" },
+	        "6oa": { path: "6oa", format: "svg" }
         };
     },
 
